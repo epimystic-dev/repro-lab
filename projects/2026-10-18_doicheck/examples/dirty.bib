@@ -1,0 +1,71 @@
+% A dirty BibTeX file - every rule fires at least once.
+
+@article{bad_prefix_doi,
+  author  = {A. Example},
+  title   = {A paper},
+  journal = {J. Dubious},
+  year    = {2020},
+  doi     = {11.1234/not-a-real-prefix}
+}
+
+@article{no_slash_doi,
+  author  = {A. Example},
+  title   = {A paper},
+  journal = {J. Dubious},
+  year    = {2020},
+  doi     = {10.1234nothinghere}
+}
+
+@article{future_year,
+  author  = {B. Future},
+  title   = {A paper from the year after next},
+  journal = {J. Imaginary},
+  year    = {2199},
+  doi     = {10.1234/future}
+}
+
+@article{bad_prefix_doi,
+  author  = {A. Example},
+  title   = {Duplicate key},
+  journal = {J. Dubious},
+  year    = {2020}
+}
+
+@article{missing_journal,
+  author  = {C. Missing},
+  title   = {No journal},
+  year    = {2020}
+}
+
+@article{empty_field,
+  author  = {},
+  title   = {Empty author},
+  journal = {J. Dubious},
+  year    = {2020}
+}
+
+@book{bad_isbn,
+  author    = {D. Example},
+  title     = {A book},
+  publisher = {Imaginary Press},
+  year      = {2020},
+  isbn      = {0-201-89683-5}
+}
+
+@misc{bad_arxiv_eprint,
+  author    = {E. Example},
+  title     = {A note},
+  year      = {2020},
+  eprint    = {9999.99999},
+  archiveprefix = {arXiv}
+}
+
+@article{unbalanced_braces,
+  author  = {F. Example},
+  title   = {A {paper with unbalanced braces},
+  journal = {J. Dubious},
+  year    = {2020}
+}
+
+Also a stray ORCID with a wrong checksum: https://orcid.org/0000-0002-1825-0098
+And a stray arXiv ID with a future year: arXiv:9912.03762

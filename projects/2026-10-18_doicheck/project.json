@@ -1,0 +1,13 @@
+{
+  "name": "doicheck",
+  "slug": "2026-10-18_doicheck",
+  "kind": "linter",
+  "one_liner": "Offline linter for DOI, arXiv, ORCID, and ISBN identifiers plus BibTeX hygiene - zero network, zero dependencies.",
+  "problem": "Scholarly artifacts fail reproducibility at the citation layer long before they fail at the data layer. 2026 saw a visible wave of hallucinated-reference papers and tools (doi-checker at ACM, BibTeX Verifier, CheckIfExist, HALLMARK) and every one of them resolves identifiers against a live registry at scan time - which rules them out of offline CI, pre-commit hooks, and air-gapped research environments. doicheck checks what can be checked without a network: DOI prefix and suffix shape against the Crossref public spec, arXiv ID against the old-style and new-style public formats, ORCID against its public mod-11 ISO 7064 checksum, ISBN-10 and ISBN-13 against their public mod-10 and mod-13 checksums, and BibTeX entries for missing required fields, future years, empty-valued fields, duplicate keys, and unbalanced braces. The tool reads files that are already on disk; it never contacts Crossref, DataCite, Semantic Scholar, or arXiv. A clean run means the record is internally consistent and well-formed, never that the reference exists.",
+  "language": "python",
+  "test_cmd": "python -m unittest discover -s tests",
+  "build_cmd": "python -m pip install -e .",
+  "deps": [],
+  "license": "MIT",
+  "clean_room": "Checksums and formats are derived from the public DOI Handbook (handbook.doi.org), the public arXiv identifier scheme (info.arxiv.org/help/arxiv_identifier.html), the public ORCID identifier spec (support.orcid.org - ISO 7064 Mod 11,2), the public ISO 2108 (ISBN) standard summary at isbn-international.org, and the public BibTeX documentation. No reference implementation of any DOI, arXiv, ORCID, ISBN, or BibTeX validator was read, vendored, or mirrored."
+}

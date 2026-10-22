@@ -107,6 +107,34 @@ _ARXIV_OLD_RE = re.compile(
 )
 
 
+def _check_arxiv_version(ver: Optional[str]) -> Optional[ValidationResult]:
+    """Validate the optional ``vN`` suffix of an arXiv identifier.
+
+    arXiv's public identifier scheme numbers revisions from v1 upward with
+    no leading zeros (info.arxiv.org/help/arxiv_identifier.html). Returns
+    None when the suffix is absent or well-formed; otherwise a failing
+    ValidationResult. The leading-zero case is checked before the
+    zero-value case so "v01" reports as a leading-zero defect rather than
+    collapsing to zero.
+    """
+    if ver is None:
+        return None
+    digits = ver[1:]  # strip the leading 'v'
+    if len(digits) > 1 and digits[0] == "0":
+        return ValidationResult(
+            False, "bad-version",
+            "arXiv version suffix '" + ver
+            + "' has a leading zero; versions are numbered without padding",
+        )
+    if int(digits) == 0:
+        return ValidationResult(
+            False, "bad-version",
+            "arXiv version suffix 'v0' is not valid;"
+            " versions start at v1",
+        )
+    return None
+
+
 def validate_arxiv_id(
     s: str, current_year: int = 2026
 ) -> ValidationResult:
@@ -122,7 +150,7 @@ def validate_arxiv_id(
         s = s[6:]
     m = _ARXIV_NEW_RE.match(s)
     if m:
-        yy, mm, _nnnnn, _ver = m.groups()
+        yy, mm, _nnnnn, ver = m.groups()
         month = int(mm)
         if month < 1 or month > 12:
             return ValidationResult(
@@ -143,16 +171,22 @@ def validate_arxiv_id(
                 "new-style arXiv IDs begin 2007-04; " + s
                 + " claims an earlier date",
             )
+        bad_ver = _check_arxiv_version(ver)
+        if bad_ver is not None:
+            return bad_ver
         return ValidationResult(True)
     m = _ARXIV_OLD_RE.match(s)
     if m:
-        _archive, yy, mm, _nnn, _ver = m.groups()
+        _archive, yy, mm, _nnn, ver = m.groups()
         month = int(mm)
         if month < 1 or month > 12:
             return ValidationResult(
                 False, "bad-month",
                 "arXiv old-style month " + mm + " is not 01-12",
             )
+        bad_ver = _check_arxiv_version(ver)
+        if bad_ver is not None:
+            return bad_ver
         return ValidationResult(True)
     return ValidationResult(
         False, "bad-format",

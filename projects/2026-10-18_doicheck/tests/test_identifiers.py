@@ -93,6 +93,28 @@ class ArxivTests(unittest.TestCase):
         self.assertFalse(r.ok)
         self.assertEqual(r.reason, "bad-format")
 
+    def test_version_v0_rejected_new_style(self):
+        # arXiv numbers revisions from v1 upward; v0 is malformed.
+        r = validate_arxiv_id("1706.03762v0")
+        self.assertFalse(r.ok)
+        self.assertEqual(r.reason, "bad-version")
+
+    def test_version_v0_rejected_old_style(self):
+        r = validate_arxiv_id("cond-mat/9709204v0")
+        self.assertFalse(r.ok)
+        self.assertEqual(r.reason, "bad-version")
+
+    def test_leading_zero_version_rejected(self):
+        # "v01" has a leading zero; arXiv versions are not zero-padded.
+        r = validate_arxiv_id("1706.03762v01")
+        self.assertFalse(r.ok)
+        self.assertEqual(r.reason, "bad-version")
+
+    def test_version_v10_still_valid(self):
+        # Guards against over-eager leading-zero rejection:
+        # "v10" is well-formed (no leading zero on a two-digit number).
+        self.assertTrue(validate_arxiv_id("1706.03762v10").ok)
+
 
 class OrcidTests(unittest.TestCase):
     def test_valid_orcid(self):

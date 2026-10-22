@@ -33,6 +33,7 @@ Each folder has its own README, tests and LICENSE; click through for install and
 | Tool | What it does | Layer |
 |---|---|---|
 | [doicheck](projects/2026-10-18_doicheck/) | Offline linter for DOI, arXiv, ORCID, and ISBN identifiers plus BibTeX hygiene - zero network, zero dependencies. | linter |
+| [seedaudit](projects/2026-10-18_seedaudit/) | AST-based linter for Python code: flags RNG calls that run without a seeding call in scope. | linter |
 
 *The radar publishes every Monday; artifacts land across the week.*
 

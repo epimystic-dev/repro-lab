@@ -1,0 +1,13 @@
+{
+  "name": "seedaudit",
+  "slug": "2026-10-18_seedaudit",
+  "kind": "linter",
+  "one_liner": "AST-based linter for Python code: flags random-number-generator calls that run without a seeding call in scope.",
+  "problem": "A 2026 Reuters-style replay of ML reproducibility shows that the most common cause of divergent runs is a seed that is defined in config but never applied to the randomization point. Fresh 2026 incidents: a LeakPro pull request (aidotse/LeakPro #451) retrofitted a `random_seed` field that had been in the audit schema but consumed nowhere; a protein-folding seed-control audit reported `src/experiment.py` using `np.random.normal` and `train_test_split` without seeds while `config.yaml` set `random_seed: null`; an mlx-engine issue (#379) documented a `seed` parameter silently ignored on the batched path. The pattern is always the same: the seed is declared but the function that samples never saw it. seedaudit walks Python source with the stdlib `ast` module and reports every call to a known RNG function (stdlib `random`, `numpy.random`, `torch`, `tf.random`, `sklearn.model_selection.train_test_split`, `sklearn.utils.shuffle`) that occurs without a seeding call or a `random_state`/`seed`/`generator` keyword argument in scope. It also flags reseed-mid-function and seed-defined-but-never-called patterns. Zero network, zero third-party dependencies. Reads code; never runs it.",
+  "language": "python",
+  "test_cmd": "python -m unittest discover -s tests",
+  "build_cmd": "python -m pip install -e .",
+  "deps": [],
+  "license": "MIT",
+  "clean_room": "Rules are derived from the public documentation of the Python stdlib `random` module, NumPy `numpy.random` (Generator and legacy global API), PyTorch `torch.manual_seed`/`torch.random`, TensorFlow `tf.random`, scikit-learn `train_test_split` and `shuffle` (the `random_state` parameter), and the public Python `ast` module documentation. No reference implementation of any seed-checker, lint rule plugin (e.g. Ruff, Flake8 extensions), or reproducibility scanner was read, vendored, or mirrored."
+}

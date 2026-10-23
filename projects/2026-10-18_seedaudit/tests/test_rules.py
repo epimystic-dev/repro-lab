@@ -67,6 +67,54 @@ class RuleFiringTests(unittest.TestCase):
         ))
         self.assertNotIn("SEED-005", ids)
 
+    def test_seed_005_stratified_shuffle_split_without_random_state(self):
+        ids = rule_ids(scan_string(
+            "from sklearn.model_selection import StratifiedShuffleSplit\n"
+            "def f():\n"
+            "    return StratifiedShuffleSplit(n_splits=5, test_size=0.2)\n"
+        ))
+        self.assertIn("SEED-005", ids)
+
+    def test_seed_005_group_shuffle_split_without_random_state(self):
+        ids = rule_ids(scan_string(
+            "from sklearn.model_selection import GroupShuffleSplit\n"
+            "def f():\n"
+            "    return GroupShuffleSplit(n_splits=5)\n"
+        ))
+        self.assertIn("SEED-005", ids)
+
+    def test_seed_005_stratified_group_kfold_without_random_state(self):
+        ids = rule_ids(scan_string(
+            "from sklearn.model_selection import StratifiedGroupKFold\n"
+            "def f():\n"
+            "    return StratifiedGroupKFold(n_splits=5)\n"
+        ))
+        self.assertIn("SEED-005", ids)
+
+    def test_seed_005_repeated_kfold_without_random_state(self):
+        ids = rule_ids(scan_string(
+            "from sklearn.model_selection import RepeatedKFold\n"
+            "def f():\n"
+            "    return RepeatedKFold(n_splits=5, n_repeats=3)\n"
+        ))
+        self.assertIn("SEED-005", ids)
+
+    def test_seed_005_repeated_stratified_kfold_without_random_state(self):
+        ids = rule_ids(scan_string(
+            "from sklearn.model_selection import RepeatedStratifiedKFold\n"
+            "def f():\n"
+            "    return RepeatedStratifiedKFold(n_splits=5, n_repeats=3)\n"
+        ))
+        self.assertIn("SEED-005", ids)
+
+    def test_seed_005_repeated_kfold_with_random_state_is_clean(self):
+        ids = rule_ids(scan_string(
+            "from sklearn.model_selection import RepeatedKFold\n"
+            "def f():\n"
+            "    return RepeatedKFold(n_splits=5, n_repeats=3, random_state=0)\n"
+        ))
+        self.assertNotIn("SEED-005", ids)
+
     def test_seed_006_reseed_in_function(self):
         # SEED-006 is INFO - need include_info=True (or strict).
         ids = rule_ids(scan_string(

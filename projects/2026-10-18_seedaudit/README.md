@@ -34,7 +34,7 @@ Seven rules, every one grounded in public documentation:
 | SEED-002 | MEDIUM | `numpy.random.*` call with no `numpy.random.seed` in scope and no `seed=` kwarg | NumPy `numpy.random` docs |
 | SEED-003 | MEDIUM | `torch.*` sampling call with no `torch.manual_seed` in scope and no `generator=` | PyTorch `torch.manual_seed` docs |
 | SEED-004 | MEDIUM | `tf.random.*` call with no `tf.random.set_seed` in scope and no `seed=` | TensorFlow `tf.random` docs |
-| SEED-005 | **HIGH** | scikit-learn `train_test_split` / `KFold` / `shuffle` / `resample` without `random_state` | scikit-learn docs |
+| SEED-005 | **HIGH** | scikit-learn splitter (`train_test_split`, `KFold`, `StratifiedKFold`, `ShuffleSplit`, `StratifiedShuffleSplit`, `GroupKFold`, `GroupShuffleSplit`, `StratifiedGroupKFold`, `RepeatedKFold`, `RepeatedStratifiedKFold`) or utility (`shuffle`, `resample`) without `random_state` | scikit-learn docs |
 | SEED-006 | INFO | reseeding inside a function (seeding call appears more than once in the same scope) | reproducibility practice |
 | SEED-007 | INFO | a seeding call is present but no RNG sampling call fires in this module | reproducibility practice |
 

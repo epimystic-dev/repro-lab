@@ -27,7 +27,7 @@ fifteen-word limit):
   * PyTorch ``torch.manual_seed`` and sampling functions
     (``torch.rand``, ``torch.randn``, ``torch.randint``, etc.).
   * TensorFlow ``tf.random.set_seed`` and ``tf.random.*``.
-  * scikit-learn ``train_test_split`` and ``shuffle`` carry a
+  * scikit-learn splitters and ``shuffle``/``resample`` carry a
     ``random_state`` parameter.
   * Python ``ast`` module.
 """
@@ -129,7 +129,12 @@ SKLEARN_SPLIT: Set[str] = {
     "sklearn.model_selection.KFold",
     "sklearn.model_selection.StratifiedKFold",
     "sklearn.model_selection.ShuffleSplit",
+    "sklearn.model_selection.StratifiedShuffleSplit",
     "sklearn.model_selection.GroupKFold",
+    "sklearn.model_selection.GroupShuffleSplit",
+    "sklearn.model_selection.StratifiedGroupKFold",
+    "sklearn.model_selection.RepeatedKFold",
+    "sklearn.model_selection.RepeatedStratifiedKFold",
     "sklearn.utils.shuffle",
     "sklearn.utils.resample",
 }

@@ -50,6 +50,30 @@ class DoiTests(unittest.TestCase):
         self.assertFalse(r.ok)
         self.assertEqual(r.reason, "forbidden-char")
 
+    def test_forbidden_del_character(self):
+        # DEL (0x7F) is an ASCII control character and not printable, so
+        # Handbook 2.5.1 excludes it from the suffix.
+        r = validate_doi("10.1000/foo\x7fbar")
+        self.assertFalse(r.ok)
+        self.assertEqual(r.reason, "forbidden-char")
+
+    def test_forbidden_c1_control_low(self):
+        # 0x80 is the first C1 control; also not printable.
+        r = validate_doi("10.1000/foo\x80bar")
+        self.assertFalse(r.ok)
+        self.assertEqual(r.reason, "forbidden-char")
+
+    def test_forbidden_c1_control_high(self):
+        # 0x9F is the last C1 control; boundary of the forbidden range.
+        r = validate_doi("10.1000/foo\x9fbar")
+        self.assertFalse(r.ok)
+        self.assertEqual(r.reason, "forbidden-char")
+
+    def test_printable_non_ascii_allowed(self):
+        # Printable non-ASCII (e.g. U+00E9) is NOT whitespace and NOT a
+        # control character, so the handbook permits it in the suffix.
+        self.assertTrue(validate_doi("10.1000/café").ok)
+
     def test_empty_input(self):
         self.assertFalse(validate_doi("").ok)
         self.assertFalse(validate_doi(None).ok)

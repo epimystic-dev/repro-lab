@@ -56,8 +56,11 @@ class ValidationResult:
 # string; per the DOI Handbook section 2.5.1 it may contain any printable
 # character except whitespace.
 _DOI_PREFIX_RE = re.compile(r"^10\.\d+(?:\.[A-Za-z0-9]+)*$")
-# Characters that must NOT appear in a DOI (whitespace or ASCII control).
-_DOI_FORBIDDEN_RE = re.compile(r"[\x00-\x20]")
+# Characters that must NOT appear in a DOI. The handbook requires the
+# suffix to contain only printable, non-whitespace characters: this covers
+# C0 controls and space (0x00-0x20), DEL (0x7F), and the C1 control range
+# (0x80-0x9F). Printable non-ASCII characters remain allowed.
+_DOI_FORBIDDEN_RE = re.compile(r"[\x00-\x20\x7f-\x9f]")
 
 
 def validate_doi(s: str) -> ValidationResult:

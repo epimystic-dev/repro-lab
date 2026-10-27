@@ -1,0 +1,13 @@
+{
+  "name": "evalrunlint",
+  "slug": "2026-10-25_evalrunlint",
+  "kind": "linter",
+  "one_liner": "Offline comparability-reproducibility linter for evaluation-harness result files (lm-eval-harness, EvalPlus, LightEval) - zero network, zero dependencies.",
+  "problem": "Two public 2026 signals converge on the same gap. lm-evaluation-harness v0.4.13 shipped fixes for a class of defects that had been silently corrupting published evaluation numbers (few-shot sampler could draw the document under test into its own demonstrations; a scalar seed from a config file was not normalized to the tuple form the harness expected; gen_prefix resolved against the wrong document; enable_thinking=True on multiple-choice tasks failed silently). Separately, the LightEval tracker records a sampling-param silent-drop class (top_k, min_p, presence_penalty accepted by the config model but not sent to the backend). Both defect classes leave shape-level fingerprints in the written results.json / results.jsonl, and every published guide to reproducibility (PromptLayer 2026; the harness READMEs) agrees on a checklist that most published result files only partially satisfy. evalrunlint is that checklist as fifteen offline rules against the file the harness actually writes: unpinned model identifiers, missing seeds, limit flags left on, inconsistent num_fewshot across tasks, duplicate tasks with differing scores, declared sampling params that never reached the recorded requests, bootstrap-less confidence intervals, truncated task lists, score-with-error pairs, enable_thinking-on-multiple-choice, future timestamps, and missing harness git-hashes. Zero network, zero third-party dependencies.",
+  "language": "python",
+  "test_cmd": "python -m unittest discover -s tests",
+  "build_cmd": "python -m pip install -e .",
+  "deps": [],
+  "license": "MIT",
+  "clean_room": "Field semantics and defect classes are derived from the public README of EleutherAI/lm-evaluation-harness, the public v0.4.13 release notes, the public EvalPlus README, the public LightEval configuration docs, the public huggingface/lighteval issue tracker on silent-drop sampling, and the public PromptLayer 2026 'Why LLM Evaluation Results Aren't Reproducible' guide. No reference implementation of any evaluation harness was read, vendored, or mirrored."
+}

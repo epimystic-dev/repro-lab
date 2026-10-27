@@ -34,6 +34,7 @@ Each folder has its own README, tests and LICENSE; click through for install and
 |---|---|---|
 | [doicheck](projects/2026-10-18_doicheck/) | Offline linter for DOI, arXiv, ORCID, and ISBN identifiers plus BibTeX hygiene - zero network, zero dependencies. | linter |
 | [seedaudit](projects/2026-10-18_seedaudit/) | AST-based linter for Python code: flags RNG calls that run without a seeding call in scope. | linter |
+| [evalrunlint](projects/2026-10-25_evalrunlint/) | Offline comparability linter for evaluation-harness result files (lm-eval-harness, EvalPlus, LightEval) - unpinned models, missing seeds, partial runs, silent-drop sampling, and more. | linter |
 
 *The radar publishes every Monday; artifacts land across the week.*
 

@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "evalrunlint"
+version = "0.1.0"
+description = "Offline comparability linter for evaluation-harness result files (lm-eval-harness, EvalPlus, LightEval and the like)."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+keywords = ["evaluation", "lm-eval-harness", "evalplus", "lighteval", "linter", "reproducibility"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Quality Assurance",
+]
+
+[project.scripts]
+evalrunlint = "evalrunlint.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["evalrunlint*"]
+exclude = ["tests*", "examples*"]

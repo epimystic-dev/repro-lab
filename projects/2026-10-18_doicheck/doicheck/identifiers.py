@@ -20,7 +20,9 @@ Sources (public, paraphrased):
     represents 10).
   * ISBN-10 (ISO 2108) - 10 digits, final a checksum (digit or "X")
     computed as sum_{i=1..9} i*d_i mod 11.
-  * ISBN-13 (ISO 2108) - 13 digits, final a checksum computed as
+  * ISBN-13 (ISO 2108) - 13 digits, must begin with the GS1 Bookland
+    prefix 978 or 979 (the two prefixes allocated to the ISBN agency),
+    final digit a checksum computed as
     10 - (sum_{i=0..5}(d_{2i}) + 3*sum_{i=0..5}(d_{2i+1})) mod 10, with
     the result 10 mapping back to 0.
 """
@@ -253,6 +255,14 @@ def validate_orcid(s: str) -> ValidationResult:
 # ---------------------------------------------------------------------------
 
 
+# ISO 2108 reserves two GS1 Bookland prefixes for the ISBN agency: 978
+# (allocated 1986, the original Bookland range) and 979 (allocated 2007
+# for additional capacity; also used for ISMN under 979-0). A 13-digit
+# EAN with any other prefix passes the Mod-10 checksum but is not an
+# ISBN - it is a different barcode (e.g. a product code or an ISSN-13).
+_ISBN13_PREFIXES = ("978", "979")
+
+
 def _clean_isbn(s: str) -> str:
     """Strip ISBN prefix, hyphens, and spaces. Keep X as uppercase."""
     s = s.strip()
@@ -298,6 +308,12 @@ def validate_isbn(s: str) -> ValidationResult:
             )
         return ValidationResult(True)
     if len(cleaned) == 13:
+        if not cleaned.startswith(_ISBN13_PREFIXES):
+            return ValidationResult(
+                False, "bad-isbn13-prefix",
+                "ISBN-13 must begin with the GS1 Bookland prefix 978 or 979"
+                " (ISO 2108); got '" + cleaned[:3] + "'",
+            )
         if not _isbn13_checksum_ok(cleaned):
             return ValidationResult(
                 False, "bad-isbn13-checksum",

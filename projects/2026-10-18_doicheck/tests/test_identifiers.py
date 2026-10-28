@@ -204,6 +204,41 @@ class IsbnTests(unittest.TestCase):
         self.assertTrue(validate_isbn("ISBN 0-201-89683-4").ok)
         self.assertTrue(validate_isbn("ISBN: 978-0-13-468599-1").ok)
 
+    def test_isbn13_rejects_non_bookland_prefix(self):
+        # Regression: before this guard, a 13-digit string with a
+        # correct Mod-10 checksum but a non-978/979 prefix was accepted
+        # as a valid ISBN. ISO 2108 reserves only 978 and 979 for the
+        # ISBN agency; '9220000000003' is a well-formed EAN-13 but not
+        # an ISBN. Hand-computed: digits 9,2,2,0,...,0,3 give weighted
+        # sum 9 + 3*2 + 2 + 3*0 + 0 + ... + 3 = 20, which is 0 mod 10.
+        r = validate_isbn("9220000000003")
+        self.assertFalse(r.ok)
+        self.assertEqual(r.reason, "bad-isbn13-prefix")
+
+    def test_isbn13_rejects_zero_prefix_even_if_checksum_ok(self):
+        # A 13-digit all-zero string has a trivial zero checksum but a
+        # '000' prefix - plainly not an ISBN.
+        r = validate_isbn("0000000000000")
+        self.assertFalse(r.ok)
+        self.assertEqual(r.reason, "bad-isbn13-prefix")
+
+    def test_valid_isbn13_with_979_prefix(self):
+        # Guard against over-eager prefix rejection. 979-11-85304-71-7
+        # is a published ISBN-13 under the 979 Bookland range: digits
+        # 9,7,9,1,1,8,5,3,0,4,7,1,7 sum to 110 weighted, which is 0
+        # mod 10, and the 979 prefix is reserved by ISO 2108 for the
+        # ISBN agency alongside 978.
+        self.assertTrue(validate_isbn("979-11-85304-71-7").ok)
+        self.assertTrue(validate_isbn("9791185304717").ok)
+
+    def test_bad_isbn13_checksum_still_prefers_checksum_reason(self):
+        # When the prefix is valid (978 or 979) but the checksum is
+        # wrong, the original 'bad-isbn13-checksum' reason must still
+        # fire - this guards the ordering of the two checks.
+        r = validate_isbn("978-0-13-468599-0")
+        self.assertFalse(r.ok)
+        self.assertEqual(r.reason, "bad-isbn13-checksum")
+
 
 if __name__ == "__main__":
     unittest.main()

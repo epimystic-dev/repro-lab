@@ -56,6 +56,20 @@ class ScriptEmission(unittest.TestCase):
         # Non-magic code stays uncommented.
         self.assertIn("\nx = 1\n", script)
 
+    def test_ipython_help_lines_are_commented_out(self):
+        # `?open` and `??print` are SyntaxErrors under plain Python;
+        # the emitted script must not carry them through verbatim.
+        nb = parse_notebook(make_notebook(cells=[
+            code_cell("?open\nx = 1\n", execution_count=1),
+            code_cell("??print\n", execution_count=2),
+        ]))
+        script = emit_script(nb, "linear")
+        self.assertIn("# nbexport: ?open", script)
+        self.assertIn("# nbexport: ??print", script)
+        self.assertIn("\nx = 1\n", script)
+        # Guard: the emitted script compiles under plain Python.
+        compile(script, "<emitted>", "exec")
+
 
 class EmitScriptCliFlag(unittest.TestCase):
     def test_emit_script_writes_file(self):

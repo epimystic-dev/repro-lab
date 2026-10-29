@@ -46,13 +46,14 @@ def _render(cells: List[CodeCell]) -> str:
     for c in cells:
         parts.append(_cell_banner(c))
         src = c.source
-        # Strip line magics and shell commands from the emitted script
-        # so plain python runs cleanly; keep them as comments so the
-        # reader can see what was there.
+        # Strip line magics, shell commands and IPython help operators
+        # from the emitted script so plain python runs cleanly; keep
+        # them as comments so the reader can see what was there.
         out_lines = []
         for line in src.splitlines():
             stripped = line.lstrip()
-            if stripped.startswith("%") or stripped.startswith("!"):
+            if (stripped.startswith("%") or stripped.startswith("!")
+                    or stripped.startswith("?")):
                 out_lines.append("# nbexport: " + line)
             else:
                 out_lines.append(line)

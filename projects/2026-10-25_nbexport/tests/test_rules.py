@@ -102,6 +102,40 @@ class Nbx005MagicOrShell(unittest.TestCase):
         ])
         self.assertIn("NBX-005", rule_ids(scan_string(nb)))
 
+    def test_ipython_help_single_question_fires(self):
+        # `?open` is IPython introspection and a SyntaxError under
+        # plain Python; it previously escaped NBX-005.
+        nb = make_notebook(cells=[
+            code_cell("?open\n", execution_count=1),
+        ])
+        self.assertIn("NBX-005", rule_ids(scan_string(nb)))
+
+    def test_ipython_help_double_question_fires(self):
+        # `??print` is the deeper-introspection form; same category.
+        nb = make_notebook(cells=[
+            code_cell("??print\n", execution_count=1),
+        ])
+        self.assertIn("NBX-005", rule_ids(scan_string(nb)))
+
+    def test_message_names_the_operator_kind(self):
+        # Ensures the operator category reaches the reader (and that
+        # the three branches are not conflated into one label).
+        nb = make_notebook(cells=[
+            code_cell("?open\n", execution_count=1),
+        ])
+        findings = scan_string(nb)
+        nbx005 = [f for f in findings if f.rule_id == "NBX-005"]
+        self.assertEqual(len(nbx005), 1)
+        self.assertIn("IPython help operator", nbx005[0].message)
+
+    def test_bare_question_in_string_does_not_fire(self):
+        # Guards against a naive substring check: a `?` inside a
+        # string literal is not an IPython operator.
+        nb = make_notebook(cells=[
+            code_cell("x = 'what?'\n", execution_count=1),
+        ])
+        self.assertNotIn("NBX-005", rule_ids(scan_string(nb)))
+
 
 class Nbx006ImportAfterUse(unittest.TestCase):
     def test_use_before_import_fires(self):

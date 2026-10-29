@@ -46,7 +46,7 @@ Nine rules, every one citing a public source:
 | NBX-002 | HIGH | execution_count values are not monotonically increasing in file order (out-of-order execution) | FlowBook (arXiv 2605.01560) |
 | NBX-003 | MEDIUM | the same execution_count appears on two code cells | nbformat v4 schema |
 | NBX-004 | INFO | gap(s) in the execution_count sequence (cells deleted after being run) | nbformat v4 schema |
-| NBX-005 | MEDIUM | cell contains `%` line magic or `!` shell command lines (replay under plain Python will not run them) | FlowBook (arXiv 2605.01560) |
+| NBX-005 | MEDIUM | cell contains `%` line magic, `!` shell command, or `?`/`??` IPython help operator lines (replay under plain Python will not run them) | FlowBook (arXiv 2605.01560) |
 | NBX-006 | MEDIUM | a name used in an earlier-executed cell is first introduced in a later-executed cell (import-after-use) | FlowBook (arXiv 2605.01560) |
 | NBX-007 | MEDIUM | notebook metadata has no `kernelspec.name` | nbformat v4 schema |
 | NBX-008 | INFO | notebook `language_info.name` is not Python | nbformat v4 schema |
@@ -101,9 +101,10 @@ and the originating `execution_count` noted:
   produced?" Cells with `execution_count=null` are placed at the end,
   with a comment banner, in file order.
 
-Line magics (`%...`) and shell commands (`!...`) are preserved as
-`# nbexport: %...` / `# nbexport: !...` comments rather than emitted
-raw, so the exported script runs under plain Python without ambiguity.
+Line magics (`%...`), shell commands (`!...`) and IPython help
+operators (`?x`, `??x`) are preserved as `# nbexport: ...` comments
+rather than emitted raw, so the exported script runs under plain
+Python without ambiguity.
 
 ## Honest scope
 
@@ -125,10 +126,13 @@ False-positive modes to know about:
 
 - A notebook using a non-Python language will trip NBX-008 under
   `--strict`. Use `--disable NBX-008` for an R or Julia notebook.
-- A notebook using `IPython`-only idioms (`display`, `?help`) will
-  look fine under NBX-005 (those are not `%` or `!` prefixed) and will
-  break on plain-Python replay. The gap is honest: NBX-005 catches
-  what it mechanically can, not what it morally should.
+- A notebook using `IPython`-only idioms that are *not* `%`, `!` or
+  `?`/`??` prefixed (for example `display(x)` called as a plain
+  function from the auto-imported IPython namespace) will still look
+  fine under NBX-005 and will break on plain-Python replay. The gap
+  is narrower than it used to be - leading `?x` and `??x` help
+  operators are now caught - but NBX-005 remains a prefix check, not
+  a full IPython-dialect parse.
 
 ## Clean-room provenance
 

@@ -1,8 +1,10 @@
 """Rule registry for nbexport.
 
 Nine rules spanning execution-order consistency, cell-source
-consistency, kernel/language metadata, and import-ordering across
-executed cells. Rule IDs use the ``NBX-`` prefix.
+consistency (including the three IPython-only line prefixes ``%``,
+``!`` and ``?`` that are SyntaxErrors under plain Python), kernel
+and language metadata, and import-ordering across executed cells.
+Rule IDs use the ``NBX-`` prefix.
 
 Public spec sources paraphrased (never vendored):
 
@@ -173,25 +175,34 @@ def _magic_or_shell(nb, options, path):
             stripped = line.lstrip()
             if not stripped:
                 continue
-            if stripped.startswith("%") or stripped.startswith("!"):
-                prefix = stripped[0]
-                out.append(Finding(
-                    rule_id="NBX-005",
-                    severity=Severity.MEDIUM,
-                    message=("line " + str(lineno) + " of cell["
-                             + str(c.index) + "] starts with '"
-                             + prefix + "' (" +
-                             ("line magic" if prefix == "%"
-                              else "shell command") + ")"),
-                    subject="cell[" + str(c.index) + "]:L" + str(lineno),
-                    line=lineno,
-                    path=path,
-                    hint=("line magics and shell commands do not run under"
-                          " plain Python; port to a stdlib equivalent or"
-                          " isolate in a shell-only cell"),
-                    citation=_FLOWBOOK_CITE,
-                ))
-                break  # one finding per cell is enough
+            if stripped.startswith("%"):
+                prefix, kind = "%", "line magic"
+            elif stripped.startswith("!"):
+                prefix, kind = "!", "shell command"
+            elif stripped.startswith("?"):
+                # IPython introspection: `?x` and `??x` show help on x.
+                # Any `?` at a statement position is a SyntaxError under
+                # plain Python, so a `?`-led line is as non-replayable
+                # as a `%` or `!` line and belongs under the same rule.
+                prefix, kind = "?", "IPython help operator"
+            else:
+                continue
+            out.append(Finding(
+                rule_id="NBX-005",
+                severity=Severity.MEDIUM,
+                message=("line " + str(lineno) + " of cell["
+                         + str(c.index) + "] starts with '"
+                         + prefix + "' (" + kind + ")"),
+                subject="cell[" + str(c.index) + "]:L" + str(lineno),
+                line=lineno,
+                path=path,
+                hint=("line magics, shell commands and IPython help"
+                      " operators do not run under plain Python; port"
+                      " to a stdlib equivalent or isolate in a"
+                      " non-Python cell"),
+                citation=_FLOWBOOK_CITE,
+            ))
+            break  # one finding per cell is enough
     return out
 
 
@@ -326,9 +337,9 @@ REGISTRY: List[Rule] = [
          _NBFORMAT_CITE,
          _execution_count_gaps),
     Rule("NBX-005", Severity.MEDIUM,
-         "line magic or shell command",
-         "cell contains % or ! prefixed lines that will not run under"
-         " plain Python",
+         "line magic, shell command or IPython help operator",
+         "cell contains %, ! or ? prefixed lines that will not run"
+         " under plain Python",
          _FLOWBOOK_CITE,
          _magic_or_shell),
     Rule("NBX-006", Severity.MEDIUM,

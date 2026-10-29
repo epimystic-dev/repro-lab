@@ -1,0 +1,13 @@
+{
+  "name": "nbexport",
+  "slug": "2026-10-25_nbexport",
+  "kind": "cli",
+  "one_liner": "Lint Jupyter notebooks for execution-order defects and emit a .py script in linear or recorded execution order - zero network, zero dependencies.",
+  "problem": "Jupyter notebooks permit out-of-order cell execution; three 2026 arXiv studies make the signal unambiguous. A GitHub-notebook survey found only ~24% were fully executable top-to-bottom and ~11% reproducible after manual troubleshooting (arXiv 2603.22726). FlowBook (arXiv 2605.01560) demonstrates out-of-order execution as the root cause of a dominant share of silent reproducibility failures, evaluated against 61 Kaggle notebooks. JunoBench (arXiv 2510.18013) attributes 74.3% of Kaggle notebook-specific crashes to cells executed in an incorrect sequence. Each defect leaves a fingerprint in the .ipynb file. nbexport is nine offline shape-level checks against that fingerprint - non-monotonic execution_count, null execution_count wedged between executed cells, duplicate execution_counts, deletion gaps, line magics / shell commands that plain-Python replay cannot handle, use-before-import across executed cells, missing kernelspec metadata, non-Python language, and executed-but-empty-source cells - plus a script exporter that gives the reviewer the two orderings they actually need: the top-to-bottom story the author claims (linear mode), and the recorded execution the kernel actually saw (executed mode). Zero network, zero third-party dependencies.",
+  "language": "python",
+  "test_cmd": "python -m unittest discover -s tests",
+  "build_cmd": "python -m pip install -e .",
+  "deps": [],
+  "license": "MIT",
+  "clean_room": "Field names and shape semantics are derived from the public nbformat v4 schema (jupyter.org/nbformat). The defect taxonomy is paraphrased from the public arXiv studies cited in README (2603.22726 'A Study of Scientific Computational Notebook Quality'; 2605.01560 'FlowBook'; 2510.18013 'JunoBench'). No reference implementation of nbconvert, jupytext, papermill, or any similar notebook tool was read, vendored, or mirrored."
+}

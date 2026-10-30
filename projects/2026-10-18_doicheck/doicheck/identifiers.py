@@ -15,6 +15,10 @@ Sources (public, paraphrased):
   * arXiv identifier scheme (info.arxiv.org/help/arxiv_identifier.html) -
     old-style archive.subj-class/YYMMNNN (NNN = 3-digit), new-style since
     2007-04 is YYMM.NNNN or YYMM.NNNNN with optional "vN" version suffix.
+    The arXiv help page records that new-style numbers were zero-padded
+    to 4 digits (NNNN) from 2007-04 through 2014-12 and to 5 digits
+    (NNNNN) from 2015-01 onward; a well-formed identifier must therefore
+    carry the digit count that matches its era.
   * ORCID (support.orcid.org) - 16 digits grouped 4-4-4-4 by hyphens,
     final character is checksum computed with ISO 7064 Mod 11,2 ("X"
     represents 10).
@@ -175,6 +179,21 @@ def validate_arxiv_id(
                 False, "pre-2007-new-style",
                 "new-style arXiv IDs begin 2007-04; " + s
                 + " claims an earlier date",
+            )
+        # arXiv's identifier scheme zero-pads the number to 4 digits
+        # through 2014-12 and to 5 digits from 2015-01 onward
+        # (info.arxiv.org/help/arxiv_identifier.html). A mismatch
+        # between the stated date and the digit count means the ID was
+        # never issued by arXiv - either a typo or a fabrication.
+        n_digits = len(_nnnnn)
+        expected_digits = 4 if year <= 2014 else 5
+        if n_digits != expected_digits:
+            era = "pre-2015" if year <= 2014 else "2015 onward"
+            return ValidationResult(
+                False, "bad-ndigits-for-era",
+                "arXiv ID " + s + " has a " + str(n_digits)
+                + "-digit number; " + era + " identifiers are zero-padded"
+                " to " + str(expected_digits) + " digits",
             )
         bad_ver = _check_arxiv_version(ver)
         if bad_ver is not None:

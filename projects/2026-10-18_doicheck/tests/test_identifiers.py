@@ -139,6 +139,56 @@ class ArxivTests(unittest.TestCase):
         # "v10" is well-formed (no leading zero on a two-digit number).
         self.assertTrue(validate_arxiv_id("1706.03762v10").ok)
 
+    def test_pre_2015_rejects_5digit_number(self):
+        # Regression: before this guard, "1412.12345" (Dec 2014, 5-digit)
+        # was accepted even though arXiv zero-padded to 4 digits until
+        # 2014-12 inclusive per info.arxiv.org/help/arxiv_identifier.html.
+        r = validate_arxiv_id("1412.12345")
+        self.assertFalse(r.ok)
+        self.assertEqual(r.reason, "bad-ndigits-for-era")
+
+    def test_pre_2015_rejects_5digit_at_start_of_new_style(self):
+        # April 2007 is the first new-style month and was 4-digit.
+        r = validate_arxiv_id("0704.00001")
+        self.assertFalse(r.ok)
+        self.assertEqual(r.reason, "bad-ndigits-for-era")
+
+    def test_post_2015_rejects_4digit_number(self):
+        # Regression: before this guard, "1501.1234" (Jan 2015, 4-digit)
+        # was accepted even though arXiv switched to 5-digit numbers
+        # beginning 2015-01 per the identifier-scheme page.
+        r = validate_arxiv_id("1501.1234")
+        self.assertFalse(r.ok)
+        self.assertEqual(r.reason, "bad-ndigits-for-era")
+
+    def test_post_2015_rejects_4digit_version_suffixed(self):
+        # The digit-count check runs before the version check so a
+        # version suffix cannot mask a wrong-era digit count.
+        r = validate_arxiv_id("1812.9999v2")
+        self.assertFalse(r.ok)
+        self.assertEqual(r.reason, "bad-ndigits-for-era")
+
+    def test_pre_2015_4digit_still_valid(self):
+        # Guard against over-eager rejection: 4-digit numbers in the
+        # pre-2015 era remain valid.
+        self.assertTrue(validate_arxiv_id("0704.0001").ok)
+        self.assertTrue(validate_arxiv_id("1412.9999").ok)
+
+    def test_post_2015_5digit_still_valid(self):
+        # Guard: 5-digit numbers in the 2015-onward era remain valid.
+        self.assertTrue(validate_arxiv_id("1501.00001").ok)
+        self.assertTrue(validate_arxiv_id("2301.12345").ok)
+
+    def test_pre_2007_still_takes_precedence_over_digit_count(self):
+        # The pre-2007-new-style check must still fire first, even on
+        # strings whose digit count would otherwise be wrong for either
+        # era. "0612.00001" (Dec 2006, 5-digit) is pre-2007 and has the
+        # wrong digit count for pre-2015, but the stabler pre-2007
+        # reason is the one callers rely on.
+        r = validate_arxiv_id("0612.00001", current_year=2026)
+        self.assertFalse(r.ok)
+        self.assertEqual(r.reason, "pre-2007-new-style")
+
 
 class OrcidTests(unittest.TestCase):
     def test_valid_orcid(self):

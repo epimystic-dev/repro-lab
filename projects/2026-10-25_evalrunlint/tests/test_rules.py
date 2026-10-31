@@ -181,6 +181,38 @@ class Eval005NoSeed(unittest.TestCase):
         ids = rule_ids(scan_string(_record(seed=_DELETE)))
         self.assertIn("EVAL-005", ids)
 
+    def test_null_seed_fires_as_no_seed(self):
+        # A JSON ``null`` seed is indistinguishable from "no seed was set"
+        # for reproducibility purposes; EVAL-005 must fire.
+        ids = rule_ids(scan_string(_record(seed=None)))
+        self.assertIn("EVAL-005", ids)
+
+    def test_empty_string_seed_fires_as_no_seed(self):
+        ids = rule_ids(scan_string(_record(seed="")))
+        self.assertIn("EVAL-005", ids)
+
+    def test_whitespace_only_seed_fires_as_no_seed(self):
+        ids = rule_ids(scan_string(_record(seed="   ")))
+        self.assertIn("EVAL-005", ids)
+
+    def test_zero_seed_does_not_fire(self):
+        # 0 is a legitimate seed value and must not be mistaken for null.
+        ids = rule_ids(scan_string(_record(seed=0)))
+        self.assertNotIn("EVAL-005", ids)
+
+    def test_null_seed_in_config_block_fires(self):
+        r = json.loads(_record(seed=_DELETE))
+        r["config"] = {"seed": None}
+        ids = rule_ids(scan_string(json.dumps(r)))
+        self.assertIn("EVAL-005", ids)
+
+    def test_one_null_but_another_valid_does_not_fire(self):
+        # If any seed slot carries a usable value the rule is satisfied.
+        r = json.loads(_record(seed=None))
+        r["random_seed"] = 42
+        ids = rule_ids(scan_string(json.dumps(r)))
+        self.assertNotIn("EVAL-005", ids)
+
 
 class Eval006ScalarSeedInTupleSlot(unittest.TestCase):
     def test_seeds_as_scalar_fires(self):

@@ -167,23 +167,38 @@ def _extract_revision(record: Dict[str, Any],
     return None
 
 
+def _is_present_seed(v: Any) -> bool:
+    """A seed field counts as "present" only if it carries a usable value.
+
+    ``null`` and the empty string are treated as absent: they are
+    indistinguishable from "the seed was not set" when it comes to
+    re-running the experiment. This matches the convention used by
+    ``_first_present`` for model fields. ``0`` is a valid seed value.
+    """
+    if v is None:
+        return False
+    if isinstance(v, str) and v.strip() == "":
+        return False
+    return True
+
+
 def _collect_seeds(record: Dict[str, Any],
                    model_args: Dict[str, str]) -> Dict[str, Any]:
     seeds: Dict[str, Any] = {}
     for k in _SEED_FIELDS:
-        if k in record:
+        if k in record and _is_present_seed(record[k]):
             seeds[k] = record[k]
-        if k in model_args:
+        if k in model_args and _is_present_seed(model_args[k]):
             seeds[k] = model_args[k]
     cfg = record.get("config") or {}
     if isinstance(cfg, dict):
         for k in _SEED_FIELDS:
-            if k in cfg:
+            if k in cfg and _is_present_seed(cfg[k]):
                 seeds[k] = cfg[k]
     gk = record.get("gen_kwargs")
     if isinstance(gk, dict):
         for k in _SEED_FIELDS:
-            if k in gk:
+            if k in gk and _is_present_seed(gk[k]):
                 seeds[k] = gk[k]
     return seeds
 

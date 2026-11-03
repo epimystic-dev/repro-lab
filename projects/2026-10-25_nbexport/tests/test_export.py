@@ -70,6 +70,33 @@ class ScriptEmission(unittest.TestCase):
         # Guard: the emitted script compiles under plain Python.
         compile(script, "<emitted>", "exec")
 
+    def test_trailing_help_lines_are_commented_out(self):
+        # `len?` and `obj.method??` are suffix forms of the IPython
+        # help operator and are also SyntaxErrors under plain Python;
+        # the emitted script must not carry them through verbatim.
+        nb = parse_notebook(make_notebook(cells=[
+            code_cell("len?\nx = 1\n", execution_count=1),
+            code_cell("obj.method??\n", execution_count=2),
+        ]))
+        script = emit_script(nb, "linear")
+        self.assertIn("# nbexport: len?", script)
+        self.assertIn("# nbexport: obj.method??", script)
+        self.assertIn("\nx = 1\n", script)
+        # Guard: the emitted script compiles under plain Python.
+        compile(script, "<emitted>", "exec")
+
+    def test_trailing_help_in_string_is_preserved(self):
+        # A `?` suffix on a string literal is not a help operator; the
+        # exporter must NOT comment such a line out. Keeps parity with
+        # the rule-side guard.
+        nb = parse_notebook(make_notebook(cells=[
+            code_cell("x = 'what?'\n", execution_count=1),
+        ]))
+        script = emit_script(nb, "linear")
+        self.assertIn("x = 'what?'", script)
+        self.assertNotIn("# nbexport: x = 'what?'", script)
+        compile(script, "<emitted>", "exec")
+
 
 class EmitScriptCliFlag(unittest.TestCase):
     def test_emit_script_writes_file(self):

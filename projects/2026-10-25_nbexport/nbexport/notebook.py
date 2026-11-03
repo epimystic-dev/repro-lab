@@ -200,6 +200,44 @@ def _referenced_names(src: str) -> List[str]:
     return out
 
 
+# IPython-only line idioms that are SyntaxErrors under plain Python.
+# ``?`` and ``??`` function as help operators in both prefix (``?x``,
+# ``??x``) and suffix (``x?``, ``x??``) positions; both forms raise
+# SyntaxError when fed to ``ast.parse``. The suffix regex matches only
+# when the whole line is a dotted identifier chain followed by ``?`` or
+# ``??`` so that strings like ``x = 'what?'`` and trailing-comment lines
+# like ``x # done?`` do not trip the rule.
+_TRAILING_HELP_RE = re.compile(
+    r"^\s*[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(\?\??)\s*$"
+)
+
+
+def classify_ipython_line(line: str) -> Optional[Tuple[str, str, str]]:
+    """Classify one source line as an IPython-only idiom, or None.
+
+    Returns a ``(marker, kind, position)`` triple when ``line`` carries
+    a line magic, a shell escape, or an IPython help operator in either
+    prefix or suffix position; ``position`` is the phrase ``"starts
+    with"`` or ``"ends with"`` so a caller can compose a readable
+    message. The classifier is deliberately conservative: an operator
+    that merely appears inside a string literal or a comment does not
+    match.
+    """
+    stripped = line.lstrip()
+    if not stripped:
+        return None
+    if stripped.startswith("%"):
+        return ("%", "line magic", "starts with")
+    if stripped.startswith("!"):
+        return ("!", "shell command", "starts with")
+    if stripped.startswith("?"):
+        return ("?", "IPython help operator", "starts with")
+    m = _TRAILING_HELP_RE.match(line)
+    if m:
+        return (m.group(1), "IPython help operator", "ends with")
+    return None
+
+
 # A small denylist of names that are either stdlib builtins or so
 # commonly imported that referencing them does not count as an
 # "undefined" use for NBX-005.
@@ -225,4 +263,5 @@ __all__ = [
     "_declared_names",
     "_referenced_names",
     "_BUILTINS",
+    "classify_ipython_line",
 ]

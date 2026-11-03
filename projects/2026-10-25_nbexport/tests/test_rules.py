@@ -136,6 +136,53 @@ class Nbx005MagicOrShell(unittest.TestCase):
         ])
         self.assertNotIn("NBX-005", rule_ids(scan_string(nb)))
 
+    def test_trailing_single_question_fires(self):
+        # `len?` is the IPython suffix help operator; a SyntaxError
+        # under plain Python just like the prefix form `?len`. The
+        # prior rule only caught the prefix form.
+        nb = make_notebook(cells=[
+            code_cell("len?\n", execution_count=1),
+        ])
+        self.assertIn("NBX-005", rule_ids(scan_string(nb)))
+
+    def test_trailing_double_question_fires(self):
+        # Deeper-introspection suffix form; same category.
+        nb = make_notebook(cells=[
+            code_cell("obj.method??\n", execution_count=1),
+        ])
+        self.assertIn("NBX-005", rule_ids(scan_string(nb)))
+
+    def test_trailing_question_message_says_ends_with(self):
+        # A suffix match must say "ends with" so a reviewer can locate
+        # the offending position; the prior message always said
+        # "starts with", which was wrong for the suffix form.
+        nb = make_notebook(cells=[
+            code_cell("np.array??\n", execution_count=1),
+        ])
+        findings = scan_string(nb)
+        nbx005 = [f for f in findings if f.rule_id == "NBX-005"]
+        self.assertEqual(len(nbx005), 1)
+        self.assertIn("ends with", nbx005[0].message)
+        self.assertIn("IPython help operator", nbx005[0].message)
+
+    def test_trailing_question_in_string_does_not_fire(self):
+        # A `?` suffix on a string literal is not an operator; must
+        # not fire. Guards against a regex that matches any line
+        # ending in `?`.
+        nb = make_notebook(cells=[
+            code_cell("x = 'what?'\n", execution_count=1),
+            code_cell("print('is it?')\n", execution_count=2),
+        ])
+        self.assertNotIn("NBX-005", rule_ids(scan_string(nb)))
+
+    def test_trailing_question_in_comment_does_not_fire(self):
+        # Python comments may legitimately end in `?`; a line whose
+        # textual `?` lies inside a `#` comment is not a help operator.
+        nb = make_notebook(cells=[
+            code_cell("x = 1  # did it work?\n", execution_count=1),
+        ])
+        self.assertNotIn("NBX-005", rule_ids(scan_string(nb)))
+
 
 class Nbx006ImportAfterUse(unittest.TestCase):
     def test_use_before_import_fires(self):

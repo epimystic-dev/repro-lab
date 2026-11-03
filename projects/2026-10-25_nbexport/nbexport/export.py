@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import List
 
-from .notebook import CodeCell, Notebook
+from .notebook import CodeCell, Notebook, classify_ipython_line
 
 
 _BANNER_LINEAR = (
@@ -47,13 +47,12 @@ def _render(cells: List[CodeCell]) -> str:
         parts.append(_cell_banner(c))
         src = c.source
         # Strip line magics, shell commands and IPython help operators
-        # from the emitted script so plain python runs cleanly; keep
-        # them as comments so the reader can see what was there.
+        # (prefix OR suffix) from the emitted script so plain python
+        # runs cleanly; keep them as comments so the reader can see
+        # what was there.
         out_lines = []
         for line in src.splitlines():
-            stripped = line.lstrip()
-            if (stripped.startswith("%") or stripped.startswith("!")
-                    or stripped.startswith("?")):
+            if classify_ipython_line(line) is not None:
                 out_lines.append("# nbexport: " + line)
             else:
                 out_lines.append(line)

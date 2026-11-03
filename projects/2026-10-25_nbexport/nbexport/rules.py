@@ -1,10 +1,12 @@
 """Rule registry for nbexport.
 
 Nine rules spanning execution-order consistency, cell-source
-consistency (including the three IPython-only line prefixes ``%``,
-``!`` and ``?`` that are SyntaxErrors under plain Python), kernel
-and language metadata, and import-ordering across executed cells.
-Rule IDs use the ``NBX-`` prefix.
+consistency (including the three IPython-only line idioms ``%``, ``!``
+and the help operators ``?`` / ``??``, which are SyntaxErrors under
+plain Python whether they appear in prefix position like ``?x`` /
+``??x`` or in suffix position like ``x?`` / ``x??``), kernel and
+language metadata, and import-ordering across executed cells. Rule
+IDs use the ``NBX-`` prefix.
 
 Public spec sources paraphrased (never vendored):
 
@@ -30,7 +32,7 @@ from typing import Callable, List
 
 from .notebook import (
     CodeCell, Notebook, _BUILTINS, _declared_names, _referenced_names,
-    parse_notebook,
+    classify_ipython_line, parse_notebook,
 )
 from .types import Finding, Options, Severity
 
@@ -172,27 +174,16 @@ def _magic_or_shell(nb, options, path):
     out: List[Finding] = []
     for c in nb.code_cells:
         for lineno, line in enumerate(c.source.splitlines(), 1):
-            stripped = line.lstrip()
-            if not stripped:
+            cls = classify_ipython_line(line)
+            if cls is None:
                 continue
-            if stripped.startswith("%"):
-                prefix, kind = "%", "line magic"
-            elif stripped.startswith("!"):
-                prefix, kind = "!", "shell command"
-            elif stripped.startswith("?"):
-                # IPython introspection: `?x` and `??x` show help on x.
-                # Any `?` at a statement position is a SyntaxError under
-                # plain Python, so a `?`-led line is as non-replayable
-                # as a `%` or `!` line and belongs under the same rule.
-                prefix, kind = "?", "IPython help operator"
-            else:
-                continue
+            marker, kind, position = cls
             out.append(Finding(
                 rule_id="NBX-005",
                 severity=Severity.MEDIUM,
                 message=("line " + str(lineno) + " of cell["
-                         + str(c.index) + "] starts with '"
-                         + prefix + "' (" + kind + ")"),
+                         + str(c.index) + "] " + position + " '"
+                         + marker + "' (" + kind + ")"),
                 subject="cell[" + str(c.index) + "]:L" + str(lineno),
                 line=lineno,
                 path=path,
@@ -338,8 +329,8 @@ REGISTRY: List[Rule] = [
          _execution_count_gaps),
     Rule("NBX-005", Severity.MEDIUM,
          "line magic, shell command or IPython help operator",
-         "cell contains %, ! or ? prefixed lines that will not run"
-         " under plain Python",
+         "cell contains %, ! or ? / ?? idioms (prefix or suffix) that"
+         " will not run under plain Python",
          _FLOWBOOK_CITE,
          _magic_or_shell),
     Rule("NBX-006", Severity.MEDIUM,

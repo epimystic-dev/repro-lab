@@ -18,7 +18,10 @@ Sources (public, paraphrased):
     The arXiv help page records that new-style numbers were zero-padded
     to 4 digits (NNNN) from 2007-04 through 2014-12 and to 5 digits
     (NNNNN) from 2015-01 onward; a well-formed identifier must therefore
-    carry the digit count that matches its era.
+    carry the digit count that matches its era. The same page records
+    that the old-style scheme was in use only from 1991-08 (the launch
+    month of hep-th, arXiv's first archive) through 2007-03 inclusive;
+    an old-style YYMM outside that window was never issued.
   * ORCID (support.orcid.org) - 16 digits grouped 4-4-4-4 by hyphens,
     final character is checksum computed with ISO 7064 Mod 11,2 ("X"
     represents 10).
@@ -207,6 +210,36 @@ def validate_arxiv_id(
             return ValidationResult(
                 False, "bad-month",
                 "arXiv old-style month " + mm + " is not 01-12",
+            )
+        # arXiv's old-style scheme was in use only from 1991-08 (the
+        # launch month of hep-th, arXiv's first archive) through 2007-03
+        # inclusive; the new-style scheme took over on 2007-04-01 per
+        # info.arxiv.org/help/arxiv_identifier.html. YY 91-99 maps to
+        # 1991-1999 and YY 00-07 maps to 2000-2007; any other YY was
+        # never issued as an old-style identifier.
+        yy_int = int(yy)
+        if 91 <= yy_int <= 99:
+            year = 1900 + yy_int
+        elif 0 <= yy_int <= 7:
+            year = 2000 + yy_int
+        else:
+            return ValidationResult(
+                False, "old-style-out-of-era",
+                "arXiv old-style ID " + s + " has YY=" + yy
+                + "; old-style was issued only 1991-08 through 2007-03",
+            )
+        if year == 1991 and month < 8:
+            return ValidationResult(
+                False, "old-style-out-of-era",
+                "arXiv old-style ID " + s + " claims " + str(year) + "-"
+                + mm + "; hep-th (the first archive) launched 1991-08",
+            )
+        if year == 2007 and month > 3:
+            return ValidationResult(
+                False, "old-style-out-of-era",
+                "arXiv old-style ID " + s + " claims " + str(year) + "-"
+                + mm + "; old-style ended 2007-03, after which arXiv"
+                " switched to new-style",
             )
         bad_ver = _check_arxiv_version(ver)
         if bad_ver is not None:

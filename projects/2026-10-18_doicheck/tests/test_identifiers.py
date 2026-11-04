@@ -189,6 +189,54 @@ class ArxivTests(unittest.TestCase):
         self.assertFalse(r.ok)
         self.assertEqual(r.reason, "pre-2007-new-style")
 
+    def test_old_style_post_2007_03_rejected(self):
+        # Regression: before this guard, "cs/0812001" (YY=08) was
+        # accepted even though arXiv's scheme page records that
+        # old-style ended 2007-03 and new-style took over 2007-04.
+        # YY 08-90 maps to no issued old-style era.
+        r = validate_arxiv_id("cs/0812001")
+        self.assertFalse(r.ok)
+        self.assertEqual(r.reason, "old-style-out-of-era")
+
+    def test_old_style_mid_window_YY_rejected(self):
+        # YY=14 (2014 or 1914) was never issued as old-style; the
+        # old-style era is strictly YY 91-99 or YY 00-07.
+        r = validate_arxiv_id("math/1412001")
+        self.assertFalse(r.ok)
+        self.assertEqual(r.reason, "old-style-out-of-era")
+
+    def test_old_style_2007_04_rejected(self):
+        # 2007-04 is the first new-style month; any old-style ID
+        # claiming that date or later was never issued.
+        r = validate_arxiv_id("cs/0704001")
+        self.assertFalse(r.ok)
+        self.assertEqual(r.reason, "old-style-out-of-era")
+
+    def test_old_style_1991_07_rejected(self):
+        # hep-th launched in 1991-08; no old-style ID claiming an
+        # earlier month in 1991 was ever issued.
+        r = validate_arxiv_id("hep-th/9107001")
+        self.assertFalse(r.ok)
+        self.assertEqual(r.reason, "old-style-out-of-era")
+
+    def test_old_style_2007_03_still_valid(self):
+        # Boundary guard: 2007-03 is the last old-style month and
+        # must remain accepted.
+        self.assertTrue(validate_arxiv_id("cond-mat/0703001").ok)
+
+    def test_old_style_1991_08_still_valid(self):
+        # Boundary guard: 1991-08 is the first old-style month and
+        # must remain accepted.
+        self.assertTrue(validate_arxiv_id("hep-th/9108001").ok)
+
+    def test_old_style_era_runs_after_bad_month(self):
+        # Ordering guard: a bad month must still report "bad-month"
+        # rather than being swallowed by the era check (the bad-month
+        # branch runs first and should not be perturbed).
+        r = validate_arxiv_id("cond-mat/9999001")
+        self.assertFalse(r.ok)
+        self.assertEqual(r.reason, "bad-month")
+
 
 class OrcidTests(unittest.TestCase):
     def test_valid_orcid(self):

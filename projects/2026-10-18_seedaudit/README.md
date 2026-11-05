@@ -26,7 +26,7 @@ keyword in scope.
 
 ## What it checks
 
-Seven rules, every one grounded in public documentation:
+Eight rules, every one grounded in public documentation:
 
 | Rule | Severity | What it flags | Public source |
 |---|---|---|---|
@@ -37,6 +37,7 @@ Seven rules, every one grounded in public documentation:
 | SEED-005 | **HIGH** | scikit-learn splitter (`train_test_split`, `KFold`, `StratifiedKFold`, `ShuffleSplit`, `StratifiedShuffleSplit`, `GroupKFold`, `GroupShuffleSplit`, `StratifiedGroupKFold`, `RepeatedKFold`, `RepeatedStratifiedKFold`) or utility (`shuffle`, `resample`) without `random_state` | scikit-learn docs |
 | SEED-006 | INFO | reseeding inside a function (seeding call appears more than once in the same scope) | reproducibility practice |
 | SEED-007 | INFO | a seeding call is present but no RNG sampling call fires in this module | reproducibility practice |
+| SEED-008 | **HIGH** | a seeding call (`random.seed`, `np.random.seed`, `np.random.default_rng`, etc.) invoked with no argument or an explicit `None` - the stdlib and NumPy docs say the RNG state is drawn from fresh system entropy, so the scope is NOT reproducibly seeded even though it looks like it | Python stdlib `random.seed` docs; NumPy `numpy.random` and `default_rng` docs |
 
 ### Framework coverage
 

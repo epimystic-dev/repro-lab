@@ -1,13 +1,13 @@
 """Rule registry for seedaudit.
 
-Seven rules on the Python-source call surface, each citing the public
+Eight rules on the Python-source call surface, each citing the public
 documentation it is grounded in. Rule IDs use the ``SEED-`` prefix; the
 lab-wide shared surface exposes this list as ``ALL_RULES``.
 
 A clean run means every known RNG call is either in a scope that saw a
-seeding call, or carries an explicit ``seed`` / ``random_state`` /
-``generator`` keyword. It never means the run itself will be
-bit-identical across hardware or software versions.
+seeding call that supplied a non-None seed value, or carries an explicit
+``seed`` / ``random_state`` / ``generator`` keyword. It never means the
+run itself will be bit-identical across hardware or software versions.
 """
 
 from __future__ import annotations
@@ -205,6 +205,42 @@ def _check_reseed_mid_function(
     return findings
 
 
+def _check_seeding_without_value(
+    result: AnalysisResult, path: str, options: Options,
+) -> List[Finding]:
+    """SEED-008: a known seeding call was invoked with no seed value (no
+    argument, or an explicit ``None`` literal). The Python stdlib
+    ``random.seed(a=None)``, NumPy ``numpy.random.seed(seed=None)``, and
+    ``numpy.random.default_rng(seed=None)`` all draw from fresh system
+    entropy in that case, so the enclosing scope is NOT seeded and every
+    subsequent RNG call is non-reproducible. The defect is particularly
+    insidious because the file LOOKS seeded.
+    """
+    findings: List[Finding] = []
+    for site in result.seeding_sites:
+        if site.establishes_seed:
+            continue
+        findings.append(Finding(
+            rule_id="SEED-008",
+            severity=Severity.HIGH,
+            message=(
+                "seeding call '" + site.dotted
+                + "' in scope '" + site.scope_name
+                + "' was invoked with no seed value (no argument, or"
+                " seed=None) - the RNG state is drawn from fresh system"
+                " entropy, not a reproducible seed"
+            ),
+            subject=site.dotted,
+            line=site.line,
+            path=path,
+            hint="Pass an integer seed: e.g. random.seed(42),"
+                 " np.random.seed(42), np.random.default_rng(42).",
+            citation="Python stdlib random.seed docs; NumPy numpy.random"
+                     " and default_rng docs",
+        ))
+    return findings
+
+
 def _check_seed_defined_but_unused(
     result: AnalysisResult, path: str, options: Options,
 ) -> List[Finding]:
@@ -285,6 +321,15 @@ REGISTRY: List[Rule] = [
          " this module.",
          "Reproducibility practice",
          _check_seed_defined_but_unused),
+    Rule("SEED-008", Severity.HIGH,
+         "Seeding call has no seed value",
+         "A known seeding call (random.seed, numpy.random.seed,"
+         " numpy.random.default_rng, etc.) was invoked with no argument"
+         " or an explicit None - the RNG state draws from system entropy"
+         " and the scope is NOT reproducibly seeded.",
+         "Python stdlib random.seed docs; NumPy numpy.random and"
+         " default_rng docs",
+         _check_seeding_without_value),
 ]
 
 

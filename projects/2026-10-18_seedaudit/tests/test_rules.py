@@ -11,8 +11,8 @@ from tests.support import rule_ids, scan_string
 
 
 class RuleFiringTests(unittest.TestCase):
-    def test_registry_has_seven_rules(self):
-        self.assertEqual(len(REGISTRY), 7)
+    def test_registry_has_eight_rules(self):
+        self.assertEqual(len(REGISTRY), 8)
 
     def test_every_rule_has_prefix_and_citation(self):
         for r in REGISTRY:
@@ -173,6 +173,66 @@ class RuleFiringTests(unittest.TestCase):
             "    return np.random.rand(seed=1)\n",
         ))
         self.assertNotIn("SEED-002", ids2)
+
+
+    def test_seed_008_fires_on_bare_np_random_seed(self):
+        ids = rule_ids(scan_string(
+            "import numpy as np\n"
+            "np.random.seed()\n"
+            "np.random.rand()\n"
+        ))
+        self.assertIn("SEED-008", ids)
+
+    def test_seed_008_fires_on_bare_random_seed(self):
+        ids = rule_ids(scan_string(
+            "import random\n"
+            "random.seed()\n"
+            "random.random()\n"
+        ))
+        self.assertIn("SEED-008", ids)
+
+    def test_seed_008_fires_on_bare_default_rng(self):
+        ids = rule_ids(scan_string(
+            "import numpy as np\n"
+            "rng = np.random.default_rng()\n"
+            "np.random.normal(0, 1)\n"
+        ))
+        self.assertIn("SEED-008", ids)
+
+    def test_seed_008_fires_on_none_positional(self):
+        ids = rule_ids(scan_string(
+            "import numpy as np\n"
+            "np.random.seed(None)\n"
+            "np.random.rand()\n"
+        ))
+        self.assertIn("SEED-008", ids)
+
+    def test_seed_008_fires_on_seed_none_kwarg(self):
+        ids = rule_ids(scan_string(
+            "import numpy as np\n"
+            "np.random.default_rng(seed=None)\n"
+            "np.random.normal(0, 1)\n"
+        ))
+        self.assertIn("SEED-008", ids)
+
+    def test_seed_008_does_not_fire_on_integer_seed(self):
+        ids = rule_ids(scan_string(
+            "import numpy as np\n"
+            "np.random.seed(42)\n"
+            "np.random.rand()\n"
+        ))
+        self.assertNotIn("SEED-008", ids)
+
+    def test_bare_np_random_seed_still_fires_seed_002_downstream(self):
+        # The analyzer fix means a no-arg seeding call does NOT silence
+        # downstream SEED-002 findings - the file is not actually seeded.
+        ids = rule_ids(scan_string(
+            "import numpy as np\n"
+            "np.random.seed()\n"
+            "def f():\n"
+            "    return np.random.rand(3)\n"
+        ))
+        self.assertIn("SEED-002", ids)
 
 
 if __name__ == "__main__":

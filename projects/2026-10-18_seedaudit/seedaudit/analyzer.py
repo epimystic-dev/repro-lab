@@ -6,6 +6,11 @@ resolved), and for every call site decides:
 
   * is this a known seeding call? (``random.seed``, ``np.random.seed``,
     ``torch.manual_seed``, ``tf.random.set_seed``, etc.)
+  * if a seeding call is invoked without a seed value or with an
+    explicit ``None`` literal, record it as present but do NOT mark the
+    enclosing scope as seeded - the stdlib and NumPy docs say the RNG
+    state is initialised from system entropy in that case and is
+    therefore not reproducible.
   * is this a known RNG sampling call?
   * if the sampling call carries a ``seed=`` / ``random_state=`` /
     ``generator=`` keyword, treat it as locally seeded.
@@ -150,6 +155,62 @@ SEEDING_KWARGS: Set[str] = {
     "seed", "random_state", "generator", "rng",
 }
 
+# Mapping from canonical seeding-call dotted path to the keyword-argument
+# name that carries the seed value. Every listed call also accepts the
+# seed positionally as the first argument. The stdlib and NumPy docs are
+# explicit that a seeding call invoked with no seed, or with an explicit
+# ``None`` literal, does NOT establish a reproducible state: Python's
+# ``random.seed(a=None)`` falls back to the current system time, NumPy's
+# ``numpy.random.seed(seed=None)`` and ``numpy.random.default_rng(seed=None)``
+# both pull fresh, unpredictable entropy from the OS. ``torch.manual_seed``,
+# ``tf.random.set_seed`` and ``jax.random.PRNGKey`` require a seed value
+# and would raise at runtime if called without one, but the same
+# None-literal guard still applies at the AST layer.
+SEEDING_CALL_SEED_PARAM: Dict[str, str] = {
+    "random.seed": "a",
+    "numpy.random.seed": "seed",
+    "numpy.random.default_rng": "seed",
+    "torch.manual_seed": "seed",
+    "torch.cuda.manual_seed": "seed",
+    "torch.cuda.manual_seed_all": "seed",
+    "tensorflow.random.set_seed": "seed",
+    "tensorflow.set_random_seed": "seed",
+    "jax.random.PRNGKey": "seed",
+    "jax.random.key": "seed",
+}
+
+
+def _is_none_literal(node: ast.AST) -> bool:
+    """True if ``node`` is the literal ``None``."""
+    return isinstance(node, ast.Constant) and node.value is None
+
+
+def _seeding_call_establishes_seed(
+    call: ast.Call, dotted: str,
+) -> bool:
+    """Decide whether a known seeding call supplies a reproducible seed.
+
+    Returns False for calls with no seed argument (``np.random.seed()``,
+    ``np.random.default_rng()``) and for calls that pass the literal
+    ``None`` either positionally or via the seed keyword. In those cases
+    the stdlib / NumPy docs say the RNG state is initialised from fresh
+    system entropy, which defeats reproducibility. Any other first
+    positional argument (a variable, call expression, attribute, starred
+    expression, or non-None literal) is treated as establishing a seed -
+    the analyzer cannot evaluate expressions, and the common pattern is
+    ``seed = int(os.environ["SEED"])`` followed by ``np.random.seed(seed)``.
+    """
+    param_name = SEEDING_CALL_SEED_PARAM.get(dotted, "seed")
+    for kw in call.keywords:
+        if kw.arg == param_name:
+            return not _is_none_literal(kw.value)
+    if call.args:
+        first = call.args[0]
+        if isinstance(first, ast.Starred):
+            return True
+        return not _is_none_literal(first)
+    return False
+
 # Framework label by dotted prefix - used in rule messages.
 FRAMEWORK_OF: List[Tuple[str, str]] = [
     ("sklearn.", "scikit-learn"),
@@ -191,6 +252,7 @@ class SeedingSite:
     col: int
     scope_name: str
     is_module_level: bool
+    establishes_seed: bool = True
 
 
 @dataclass
@@ -318,15 +380,18 @@ class _Walker(ast.NodeVisitor):
         if dotted is not None:
             if dotted in SEEDING_CALLS:
                 scope = self._current_scope()
-                if scope.seeded:
-                    scope.reseed_count += 1
-                scope.seeded = True
+                establishes = _seeding_call_establishes_seed(node, dotted)
+                if establishes:
+                    if scope.seeded:
+                        scope.reseed_count += 1
+                    scope.seeded = True
                 self.seeds.append(SeedingSite(
                     dotted=dotted,
                     line=node.lineno,
                     col=node.col_offset,
                     scope_name=scope.name,
                     is_module_level=scope.is_module,
+                    establishes_seed=establishes,
                 ))
             elif dotted in ALL_RNG:
                 has_kw = any(
@@ -382,4 +447,5 @@ __all__ = [
     "SKLEARN_SPLIT",
     "ALL_RNG",
     "SEEDING_KWARGS",
+    "SEEDING_CALL_SEED_PARAM",
 ]

@@ -81,6 +81,59 @@ class ParseTests(unittest.TestCase):
         self.assertEqual(len(entries), 1)
         self.assertEqual(entries[0].key, "parened")
 
+    def test_string_pseudo_entry_skipped(self):
+        # @string is a macro-definition command per the BibTeX user's
+        # guide, not a bibliographic entry; it must not appear in the
+        # parser output as an entry with a cite-key-shaped payload.
+        text = '@string{jcacm = "Communications of the ACM"}\n'
+        entries = parse_bibtex(text)
+        self.assertEqual(entries, [])
+
+    def test_preamble_pseudo_entry_skipped(self):
+        text = '@preamble{" \\newcommand{\\noopsort}[1]{} "}\n'
+        entries = parse_bibtex(text)
+        self.assertEqual(entries, [])
+
+    def test_comment_pseudo_entry_skipped(self):
+        # A @comment body may contain commas; nothing inside it is a key.
+        text = "@comment{some notes, including commas and @article tokens}\n"
+        entries = parse_bibtex(text)
+        self.assertEqual(entries, [])
+
+    def test_string_case_insensitive(self):
+        # BibTeX entry types are case-insensitive; the parser lowercases
+        # the type for the REQUIRED_FIELDS lookup, so pseudo-entry
+        # detection must honor the same casing.
+        text = '@STRING{jcacm = "CACM"}\n@String{jipd = "JIPD"}\n'
+        entries = parse_bibtex(text)
+        self.assertEqual(entries, [])
+
+    def test_pseudo_entries_do_not_swallow_following_article(self):
+        # A @string prelude followed by a real @article must still parse
+        # the article correctly - i.e. we advance past the pseudo-entry
+        # span, not past a single character.
+        text = (
+            '@string{jcacm = "Communications of the ACM"}\n'
+            '@string{jtse = "Trans. Software Eng."}\n'
+            "@article{smith2020,\n"
+            "  author = {Smith, A.},\n"
+            "  title = {A paper},\n"
+            "  journal = jcacm,\n"
+            "  year = {2020}\n"
+            "}\n"
+        )
+        entries = parse_bibtex(text)
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0].entry_type, "article")
+        self.assertEqual(entries[0].key, "smith2020")
+        self.assertEqual(entries[0].fields["year"], "2020")
+
+    def test_string_with_parens_skipped(self):
+        # Pseudo-entries also accept the paren shell.
+        text = '@string(jcacm = "CACM")\n'
+        entries = parse_bibtex(text)
+        self.assertEqual(entries, [])
+
 
 if __name__ == "__main__":
     unittest.main()

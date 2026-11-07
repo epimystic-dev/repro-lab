@@ -119,6 +119,33 @@ class RuleFiringTests(unittest.TestCase):
             " year = {2020}}\n"))
         self.assertIn("DOI-013", ids)
 
+    def test_doi_013_does_not_fire_on_repeated_string_pseudo_entries(self):
+        # Two @string macros defining the same abbreviation name are a
+        # BibTeX redefinition - not a duplicate cite key. The parser
+        # now skips @string / @preamble / @comment pseudo-entries, so
+        # DOI-013 must not fire here even though the quoted macro
+        # bodies are identical.
+        ids = rule_ids(scan_string(
+            '@string{jcacm = "Communications of the ACM"}\n'
+            '@string{jcacm = "Communications of the ACM"}\n'
+            "@article{smith2020, author = {Smith}, title = {t},"
+            " journal = {j}, year = {2020}}\n"
+        ))
+        self.assertNotIn("DOI-013", ids)
+
+    def test_bibtex_rules_ignore_preamble_and_comment(self):
+        # A @preamble with an empty quoted body and a @comment block
+        # must not surface as DOI-010 (missing required field),
+        # DOI-012 (empty field), or DOI-013 (duplicate key) findings.
+        ids = rule_ids(scan_string(
+            '@preamble{""}\n'
+            "@comment{free-form notes, with commas inside}\n"
+            "@article{only, author = {A}, title = {t}, journal = {j},"
+            " year = {2020}}\n"
+        ))
+        for unwanted in ("DOI-010", "DOI-012", "DOI-013", "DOI-014"):
+            self.assertNotIn(unwanted, ids)
+
     def test_doi_014_unbalanced_braces(self):
         # An entry whose outer braces never close triggers DOI-014 - the
         # common BibTeX failure where a stray open-brace swallows every

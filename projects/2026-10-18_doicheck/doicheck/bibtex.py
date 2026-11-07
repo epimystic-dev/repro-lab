@@ -10,6 +10,14 @@ regardless of whether the entries later resolve.
 Reference (public): the BibTeX user's guide (bibtex-style.pdf, Oren
 Patashnik 1988, public domain) names the "required" and "optional" fields
 per entry type. The required-field table below paraphrases that document.
+
+The same guide reserves three pseudo-entry commands that share the
+``@type{...}`` syntactic shell but are NOT bibliographic records:
+``@string{abbr = "..."}`` defines a macro, ``@preamble{"..."}`` injects
+LaTeX into the style file, and ``@comment{...}`` is a block comment.
+Their bodies are not ``key, field = value, ...`` payloads, so they are
+recognised by name and skipped by ``parse_bibtex`` rather than being
+mis-parsed as entries with a bogus cite key.
 """
 
 from __future__ import annotations
@@ -61,6 +69,13 @@ class BibEntry:
 # ---------------------------------------------------------------------------
 
 _ENTRY_HEAD_RE = re.compile(r"@([A-Za-z]+)\s*[\{\(]\s*", re.MULTILINE)
+
+# BibTeX pseudo-entry commands per the user's guide: they share the
+# @type{...} shell but their bodies are macro definitions, LaTeX
+# preamble text, or free-form comments - never cite-key payloads - so
+# the parser consumes their span and moves on without emitting an
+# entry.
+_PSEUDO_ENTRY_TYPES = frozenset(("string", "preamble", "comment"))
 
 
 def _skip_to_entry(text: str, pos: int) -> Optional[int]:
@@ -243,6 +258,13 @@ def parse_bibtex(text: str) -> List[BibEntry]:
         )
         if body is None:
             pos = p + 1
+            continue
+        if etype in _PSEUDO_ENTRY_TYPES:
+            # Skip the span but do not emit a BibEntry: a @string macro,
+            # @preamble LaTeX injection, or @comment block is not a
+            # bibliographic record and must not be subjected to the
+            # cite-key, required-field, or empty-value rules.
+            pos = after
             continue
         line = _line_of(text, p)
         body_line = _line_of(text, bracket_pos + 1)

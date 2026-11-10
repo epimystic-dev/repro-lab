@@ -18,6 +18,14 @@ LaTeX into the style file, and ``@comment{...}`` is a block comment.
 Their bodies are not ``key, field = value, ...`` payloads, so they are
 recognised by name and skipped by ``parse_bibtex`` rather than being
 mis-parsed as entries with a bogus cite key.
+
+The guide also defines the ``#`` concatenation operator: a field value
+may be a sequence of quoted strings, braced strings, and macro names
+joined by ``#`` (e.g. ``journal = jcacm # " Letters"``). The parser
+consumes the tail of a concatenated value so that the comma separating
+this field from the next is not hidden behind an unread ``#`` - without
+this, every subsequent field in the entry would be silently dropped by
+the enclosing field-name scanner.
 """
 
 from __future__ import annotations
@@ -152,6 +160,73 @@ def _braces_balanced(value: str) -> bool:
     return depth == 0
 
 
+def _consume_concat(
+    text: str, i: int, n: int, name: str,
+    fields: Dict[str, str], unbalanced: List[str],
+) -> int:
+    """Consume ``# <component>`` concatenation parts following a value.
+
+    BibTeX allows a field value to be a sequence of quoted strings,
+    braced strings, and macro names joined by ``#`` (BibTeX user's guide,
+    "Concatenation of strings"). If the tail is not consumed, the next
+    ``#`` sits between the closing quote/brace of the first component
+    and the comma that separates this field from the next; the enclosing
+    field-name scanner treats the ``#`` as a non-identifier and breaks
+    the field loop, silently dropping every remaining field in the entry.
+
+    String components (quoted or braced) have their inner text appended
+    to the field value; macro names are appended verbatim because this
+    is a hygiene linter and does not resolve macros. Brace imbalance in
+    any concatenated component flags the field, matching the first-
+    component behavior.
+    """
+    j = i
+    while j < n and text[j] in " \t\r\n":
+        j += 1
+    while j < n and text[j] == "#":
+        i = j + 1
+        while i < n and text[i] in " \t\r\n":
+            i += 1
+        if i >= n:
+            break
+        if text[i] == "{":
+            extra, i, ok = _read_balanced(text, i, "{", "}")
+            if extra is None:
+                break
+            if (not ok or not _braces_balanced(extra)) \
+                    and name not in unbalanced:
+                unbalanced.append(name)
+            fields[name] = fields.get(name, "") + extra
+        elif text[i] == '"':
+            start = i + 1
+            i += 1
+            while i < n and text[i] != '"':
+                if text[i] == "\\" and i + 1 < n:
+                    i += 2
+                    continue
+                i += 1
+            extra = text[start:i]
+            if i < n:
+                i += 1
+            if not _braces_balanced(extra) and name not in unbalanced:
+                unbalanced.append(name)
+            fields[name] = fields.get(name, "") + extra
+        else:
+            # Macro name or bare identifier.
+            start = i
+            while i < n and (text[i].isalnum() or text[i] in "-_"):
+                i += 1
+            if i == start:
+                # Unexpected non-component after '#'; stop to recover
+                # rather than loop forever on an unknown token.
+                break
+            fields[name] = fields.get(name, "") + text[start:i]
+        j = i
+        while j < n and text[j] in " \t\r\n":
+            j += 1
+    return i
+
+
 def _parse_fields(body: str, body_start_line: int
                   ) -> Tuple[str, Dict[str, str], Dict[str, int], List[str]]:
     """Parse the inside of an entry. The first token up to the first comma
@@ -199,6 +274,7 @@ def _parse_fields(body: str, body_start_line: int
                 unbalanced.append(name)
             fields[name] = val
             field_lines[name] = line_here
+            i = _consume_concat(text, i, n, name, fields, unbalanced)
         elif text[i] == '"':
             start = i + 1
             i += 1
@@ -214,6 +290,7 @@ def _parse_fields(body: str, body_start_line: int
             field_lines[name] = line_here
             if not _braces_balanced(val):
                 unbalanced.append(name)
+            i = _consume_concat(text, i, n, name, fields, unbalanced)
         else:
             start = i
             while i < n and text[i] not in ",\n":

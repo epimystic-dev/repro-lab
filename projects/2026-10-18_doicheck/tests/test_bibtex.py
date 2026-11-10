@@ -134,6 +134,98 @@ class ParseTests(unittest.TestCase):
         entries = parse_bibtex(text)
         self.assertEqual(entries, [])
 
+    def test_quoted_concat_preserves_following_fields(self):
+        # Regression: a quoted value followed by '#' concatenation must
+        # not swallow the fields that come after it. Before this fix the
+        # parser read "Hello", did not recognise '#' in the comma-skip
+        # loop, failed to read a next field name, and silently dropped
+        # author / journal / year.
+        text = (
+            "@article{foo,\n"
+            '  title = "Hello" # " World",\n'
+            '  author = "Smith, J.",\n'
+            '  journal = "IEEE",\n'
+            "  year = 2024\n"
+            "}\n"
+        )
+        entries = parse_bibtex(text)
+        self.assertEqual(len(entries), 1)
+        e = entries[0]
+        self.assertEqual(
+            sorted(e.fields.keys()),
+            ["author", "journal", "title", "year"],
+        )
+
+    def test_quoted_concat_joins_string_components(self):
+        # The '#' operator concatenates string components per the BibTeX
+        # user's guide; " Hello" # " World" is the single string
+        # "Hello World".
+        text = (
+            "@article{foo,\n"
+            '  title = "Hello" # " World"\n'
+            "}\n"
+        )
+        entries = parse_bibtex(text)
+        self.assertEqual(entries[0].fields["title"], "Hello World")
+
+    def test_braced_concat_joins_components(self):
+        # Braced components also participate in concatenation.
+        text = (
+            "@article{foo,\n"
+            '  title = {A} # {B} # {C},\n'
+            "  year = 2024\n"
+            "}\n"
+        )
+        entries = parse_bibtex(text)
+        self.assertEqual(entries[0].fields["title"], "ABC")
+        self.assertEqual(entries[0].fields["year"], "2024")
+
+    def test_quoted_then_macro_concat(self):
+        # A quoted prefix followed by a macro reference must not drop
+        # the comma that separates the field from the next one. The
+        # macro name is preserved verbatim (this is a hygiene linter
+        # and does not resolve macros).
+        text = (
+            '@string{iet = "Inst. of Engineering Technology"}\n'
+            "@article{foo,\n"
+            '  journal = "Prefix: " # iet,\n'
+            '  year = 2024\n'
+            "}\n"
+        )
+        entries = parse_bibtex(text)
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0].fields["journal"], "Prefix: iet")
+        self.assertEqual(entries[0].fields["year"], "2024")
+
+    def test_concat_spanning_newline(self):
+        # BibTeX allows whitespace (including newlines) around '#'.
+        text = (
+            "@article{foo,\n"
+            '  title = "A"\n'
+            '         # " paper",\n'
+            '  author = "X"\n'
+            "}\n"
+        )
+        entries = parse_bibtex(text)
+        self.assertEqual(entries[0].fields["title"], "A paper")
+        self.assertEqual(entries[0].fields["author"], "X")
+
+    def test_bare_macro_concat_followed_by_string(self):
+        # Macro-name-first concatenation reaches the comma via the bare
+        # branch's "read until comma or newline" logic even without the
+        # fix, but the test documents the intended behavior so a future
+        # refactor of the bare branch cannot regress field preservation.
+        text = (
+            '@string{iet = "IEEE Trans."}\n'
+            "@article{foo,\n"
+            '  journal = iet # " on Topic",\n'
+            "  year = 2024\n"
+            "}\n"
+        )
+        entries = parse_bibtex(text)
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0].fields["year"], "2024")
+
 
 if __name__ == "__main__":
     unittest.main()

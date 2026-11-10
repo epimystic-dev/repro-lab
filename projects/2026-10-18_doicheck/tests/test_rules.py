@@ -133,6 +133,22 @@ class RuleFiringTests(unittest.TestCase):
         ))
         self.assertNotIn("DOI-013", ids)
 
+    def test_doi_010_not_fired_on_hash_concatenation(self):
+        # Before the concatenation fix, a quoted value followed by '#'
+        # left author / journal / year unread and DOI-010 fired three
+        # times on a well-formed BibTeX entry. Assert the regression:
+        # all four required fields are now visible so DOI-010 is silent.
+        ids = rule_ids(scan_string(
+            '@string{iet = "IEEE Trans."}\n'
+            "@article{foo,\n"
+            '  title = "Hello" # " World",\n'
+            '  author = "Smith, J.",\n'
+            "  journal = iet,\n"
+            "  year = 2024\n"
+            "}\n"
+        ))
+        self.assertNotIn("DOI-010", ids)
+
     def test_bibtex_rules_ignore_preamble_and_comment(self):
         # A @preamble with an empty quoted body and a @comment block
         # must not surface as DOI-010 (missing required field),
